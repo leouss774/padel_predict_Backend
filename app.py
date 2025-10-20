@@ -4,6 +4,7 @@ from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager, create_access_token
 from flask_cors import CORS
 from datetime import timedelta
+import os
 
 # Initialisation de l'application
 app = Flask(__name__)
@@ -11,18 +12,18 @@ app = Flask(__name__)
 # Configuration CORS - TRÈS IMPORTANT
 CORS(app, resources={
     r"/api/*": {
-        "origins": ["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000"],
+        "origins": ["*"],
         "methods": ["GET", "POST", "PUT", "DELETE"],
         "allow_headers": ["Content-Type", "Authorization"]
     }
 })
 
-# Configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///tdf_predictor.db'
+# Configuration dynamique
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URI', 'sqlite:///tdf_predictor.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'super-secret-key-2024'
-app.config['JWT_SECRET_KEY'] = 'jwt-super-secret-2024'
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=1)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'super-secret-key-2024')
+app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'jwt-super-secret-2024')
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=int(os.environ.get('JWT_EXPIRY_DAYS', 1)))
 
 # Initialisation des extensions
 db = SQLAlchemy(app)
@@ -46,6 +47,9 @@ class User(db.Model):
 with app.app_context():
     db.create_all()
     print("✅ Base de données initialisée")
+
+
+
 
 # ==================== ROUTES ====================
 
@@ -218,16 +222,21 @@ def not_found(error):
     }), 404
 
 if __name__ == '__main__':
+    # Configuration dynamique du serveur
+    host = os.environ.get('FLASK_HOST', '0.0.0.0')
+    port = int(os.environ.get('FLASK_PORT', 8000))
+    debug = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
+    
     print("=" * 60)
     print("🚀 SERVEUR TdF PREDICTOR - DÉMARRAGE")
     print("=" * 60)
-    print("📡 URL: http://localhost:8000")
-    print("🔗 Test: http://localhost:8000/api/test")
-    print("👥 Créer users: http://localhost:8000/api/create-test-users")
-    print("🔐 Login: POST http://localhost:8000/api/auth/login")
-    print("📝 Register: POST http://localhost:8000/api/auth/register")
-    print("🐛 Debug: http://localhost:8000/api/debug/users")
+    print(f"📡 URL: http://{host}:{port}")
+    print(f"🔗 Test: http://localhost:{port}/api/test")
+    print(f"👥 Créer users: http://localhost:{port}/api/create-test-users")
+    print(f"🔐 Login: POST http://localhost:{port}/api/auth/login")
+    print(f"📝 Register: POST http://localhost:{port}/api/auth/register")
+    print(f"🐛 Debug: http://localhost:{port}/api/debug/users")
+    print(f"🔧 Debug Mode: {debug}")
     print("=" * 60)
     
-    # Démarrer le serveur
-    app.run(host='0.0.0.0', port=8000, debug=True)
+    app.run(host=host, port=port, debug=debug)
